@@ -1,0 +1,54 @@
+// Center and Size and distance to center
+v@min = {0.0, 0.0, 0.0 };
+v@max = {0.0, 0.0, 0.0 };
+getbbox(@min,@max);
+v@size = @max - @min;
+v@center = (@max + @min) / 2.0;
+f@dist = length(v@P - v@center) / length(@size);
+
+
+// Compute Spherical Coordinates
+vector sphericalCoordinates(float theta, phi, r) {
+        float x = r* cos(phi)*sin(theta);
+        float y = r* cos(theta);
+        float z = r* sin(phi)*sin(theta);
+        vector dir = set(x,y,z);
+        return dir;
+}
+
+// Apply Noise to Radius
+float noiseScale(float r, randstr, freq, rougth; vector pos, offset){
+        float strength = snoise((pos+offset) * freq, 5, rougth, 1);
+        strength = randstr * fit(strength, -1.7, 1.7, -r, r);
+        return (r+strength);
+}
+
+// Clumping or Spreading
+vector spreading(vector pos; float spread, r) {
+        vector min, max;
+        getbbox(min, max);
+        vector center = (min+max)/2;
+        vector c_offset = (center-pos) * spread * r;
+        return c_offset;
+}
+
+// Parameters
+float inherit = ch("inherit_Velocity");
+float theta = radians(90-ch("Elevation"));
+float phi = radians(ch("Azimuth"));
+float r = ch("Radius");
+float randstr = ch("Random_Strenth");
+float freq = ch("Freq");
+float rough = ch("Roughness");
+vector offset = chv("Offset");
+float spread = ch("Spread");
+float distance = chramp("Distance",1-@dist);
+
+r = noiseScale(r, randstr, freq, rough, @P, offset);
+vector dir = sphericalCoordinates(theta, phi, r);
+vector c_offset = spreading(@P, spread, r);
+
+vector oldv = @v*inherit; // Inherit Existing Velocity
+@v = dir - c_offset; // Calculate New Velocity
+@v = oldv + normalize(@v) * r * distance; // Apply Noise to Magnitude
+@N = @v;
